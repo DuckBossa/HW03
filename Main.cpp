@@ -1,7 +1,3 @@
-#include <SFML/System.hpp>
-#include <SFML/Graphics.hpp>
-
-#include <Windows.h>
 #include "Main.h"
 
 #define FPS	60.0f
@@ -33,14 +29,13 @@ int main() {
 				window.close();
 			}
 		}
-		
 		/* handle input */
 		em.handleInput();
 		
 		/* update entities */
 		em.update(SPF.asSeconds());
 		/* collision detection */
-		
+		em.logic();
 		window.clear();
 		
 		/* render */
@@ -108,6 +103,32 @@ void EntityManager::render(sf::RenderTarget& g) {
 		player->render(g);
 	}
 }
+
+void EntityManager::logic() {
+	for (auto bullet : ebullets) {
+		for (auto player : players) {
+			if (circleCollision(*bullet, *player)) {
+				//damage
+			}
+		}
+	}
+
+	for (auto bullet : pbullets) {
+		for (auto enemy : enemies) {
+			if (circleCollision(*bullet, *enemy)) {
+				//destroy enemy
+			}
+		}
+	}
+
+}
+
+bool EntityManager::circleCollision(const Entity &c1, const Entity &c2) {
+	const auto c1p = c1.getPos();
+	const auto c2p = c2.getPos();
+	return ((c1p.x - c2p.x) * (c1p.x - c2p.x) + (c1p.y - c2p.y) * (c1p.y - c2p.y)) <= ((c1.getRad() + c2.getRad()) * (c1.getRad() + c2.getRad()));
+}
+
 
 void initialize() {
 	em.addPlayer(new Player());

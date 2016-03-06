@@ -2,6 +2,12 @@
 #include <vector>
 #include <cmath>
 #include <iostream> /* error-checking */
+#include <SFML/System.hpp>
+#include <SFML/Graphics.hpp>
+#include <Windows.h>
+
+
+
 
 class Entity {
 	protected:
@@ -11,6 +17,14 @@ class Entity {
 	Entity(float radius) : form(radius) {}
 	virtual void update(float dt) = 0;
 	void render(sf::RenderTarget& g);
+	sf::Vector2f getPos() const {
+		return  form.getPosition();
+	}
+
+	float getRad() const {
+		return form.getRadius();
+	}
+
 };
 
 class Player : public Entity {
@@ -31,16 +45,28 @@ class Bullet : public Entity {
 	
 };
 
+class Enemy : public Entity {
+	
+};
+
+class StageDirector {
+
+};
+
 class EntityManager {
 	private:
 	std::vector<Player*> players;
-	
+	std::vector<Bullet*> pbullets;
+	std::vector<Bullet*> ebullets;
+	std::vector<Enemy*> enemies;
 	public:
 	EntityManager() {}
 	void addPlayer(Entity* player);
 	void handleInput();
 	void update(float dt);
+	void logic();
 	void render(sf::RenderTarget& g);
+	bool circleCollision(const Entity &c1, const Entity &c2);
 } em;
 
 void initialize();
