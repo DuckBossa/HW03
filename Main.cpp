@@ -55,6 +55,19 @@ int main() {
 	return 0;
 }
 
+sf::Vector2f Entity::getPos() const {
+	return form.getPosition();
+}
+
+float Entity::getRad() const {
+	return form.getRadius();
+}
+
+bool Entity::isKeyDown(const int& key) {
+	short state = GetAsyncKeyState(MapVirtualKey(key, MAPVK_VSC_TO_VK_EX));
+	return state >> 15 != 0;
+}
+
 void Entity::render(sf::RenderTarget& g) {
 	g.draw(form);
 }
@@ -82,6 +95,12 @@ void Player::handleInput() {
 	direction.y *= 1 - std::abs(direction.x)*(std::sqrt(2) - 1)/std::sqrt(2);
 }
 
+bool EntityManager::circleCollision(const Entity& c1, const Entity& c2) {
+	const auto c1p = c1.getPos();
+	const auto c2p = c2.getPos();
+	return ((c1p.x - c2p.x)*(c1p.x - c2p.x) + (c1p.y - c2p.y)*(c1p.y - c2p.y)) <= ((c1.getRad() + c2.getRad())*(c1.getRad() + c2.getRad()));
+}
+
 void EntityManager::addPlayer(Entity* player) {
 	players.push_back(dynamic_cast<Player*>(player));
 }
@@ -95,12 +114,6 @@ void EntityManager::handleInput() {
 void EntityManager::update(float dt) {
 	for (auto player : players) {
 		player->update(dt);
-	}
-}
-
-void EntityManager::render(sf::RenderTarget& g) {
-	for (auto player : players) {
-		player->render(g);
 	}
 }
 
@@ -120,21 +133,14 @@ void EntityManager::logic() {
 			}
 		}
 	}
-
 }
 
-bool EntityManager::circleCollision(const Entity &c1, const Entity &c2) {
-	const auto c1p = c1.getPos();
-	const auto c2p = c2.getPos();
-	return ((c1p.x - c2p.x) * (c1p.x - c2p.x) + (c1p.y - c2p.y) * (c1p.y - c2p.y)) <= ((c1.getRad() + c2.getRad()) * (c1.getRad() + c2.getRad()));
+void EntityManager::render(sf::RenderTarget& g) {
+	for (auto player : players) {
+		player->render(g);
+	}
 }
-
 
 void initialize() {
 	em.addPlayer(new Player());
-}
-
-bool isKeyDown(const int& key) {
-	short state = GetAsyncKeyState(MapVirtualKey(key, MAPVK_VSC_TO_VK_EX));
-	return state >> 15 != 0;
 }

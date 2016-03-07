@@ -1,13 +1,11 @@
-#include <string>
-#include <vector>
-#include <cmath>
-#include <iostream> /* error-checking */
 #include <SFML/System.hpp>
 #include <SFML/Graphics.hpp>
 #include <Windows.h>
 
-
-
+#include <string>
+#include <vector>
+#include <cmath>
+#include <iostream> /* error-checking */
 
 class Entity {
 	protected:
@@ -15,16 +13,11 @@ class Entity {
 	
 	public:
 	Entity(float radius) : form(radius) {}
+	sf::Vector2f getPos() const;
+	float getRad() const;
+	bool isKeyDown(const int& key);
 	virtual void update(float dt) = 0;
 	void render(sf::RenderTarget& g);
-	sf::Vector2f getPos() const {
-		return  form.getPosition();
-	}
-
-	float getRad() const {
-		return form.getRadius();
-	}
-
 };
 
 class Player : public Entity {
@@ -59,6 +52,8 @@ class EntityManager {
 	std::vector<Bullet*> pbullets;
 	std::vector<Bullet*> ebullets;
 	std::vector<Enemy*> enemies;
+	bool circleCollision(const Entity& c1, const Entity& c2);
+	
 	public:
 	EntityManager() {}
 	void addPlayer(Entity* player);
@@ -66,8 +61,6 @@ class EntityManager {
 	void update(float dt);
 	void logic();
 	void render(sf::RenderTarget& g);
-	bool circleCollision(const Entity &c1, const Entity &c2);
 } em;
 
 void initialize();
-bool isKeyDown(const int& key);
