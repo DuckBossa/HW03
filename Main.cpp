@@ -4,6 +4,8 @@
 #define SPF sf::seconds(1.0f/FPS)
 
 const double PI = std::acos(-1);
+const auto window_height = 800;
+const auto window_width = 400;
 
 namespace Keys {
 	const auto UP = 0x11;		/* w */
@@ -13,7 +15,7 @@ namespace Keys {
 }
 
 int main() {
-	sf::RenderWindow window(sf::VideoMode(800, 600), "My Window");
+	sf::RenderWindow window(sf::VideoMode(window_width,window_height), "My Window");
 	sf::Clock clock;
 	sf::Time lag = sf::seconds(0);
 	
@@ -102,28 +104,25 @@ bool EntityManager::circleCollision(const Entity& c1, const Entity& c2) {
 }
 
 void EntityManager::addPlayer(Entity* player) {
-	players.push_back(dynamic_cast<Player*>(player));
+	this->player = dynamic_cast<Player*>(player);
 }
 
 void EntityManager::handleInput() {
-	for (auto player : players) {
-		player->handleInput();
-	}
+	player->handleInput();
 }
 
 void EntityManager::update(float dt) {
-	for (auto player : players) {
 		player->update(dt);
-	}
 }
 
 void EntityManager::logic() {
+	resolveWallCollision();
+
 	for (auto bullet : ebullets) {
-		for (auto player : players) {
 			if (circleCollision(*bullet, *player)) {
 				//damage
 			}
-		}
+
 	}
 
 	for (auto bullet : pbullets) {
@@ -133,14 +132,29 @@ void EntityManager::logic() {
 			}
 		}
 	}
+
+
 }
 
 void EntityManager::render(sf::RenderTarget& g) {
-	for (auto player : players) {
-		player->render(g);
-	}
+	player->render(g);
+}
+
+
+void EntityManager::resolveWallCollision() {
+	if (player->getPos().x + player->getRad() > window_width)
+		player->move(sf::Vector2f(window_width - (player->getPos().x + player->getRad()), 0));
+	else if (player->getPos().x - player->getRad() < 0)
+		player->move(sf::Vector2f(abs(player->getPos().x),0));
+	if (player->getPos().y + player->getRad() > window_height)
+		player->move(sf::Vector2f(0, window_width - (player->getPos().y + player->getRad())));
+	else if (player->getPos().y - player->getRad() < 0)
+		player->move(sf::Vector2f(0, abs(player->getPos().y)));
 }
 
 void initialize() {
-	em.addPlayer(new Player());
+	em.addPlayer(new Player(sf::Vector2f(50,50)));
+	//instantiate 50 pbullets
+	//instantiate 1000 enemies
+	//instantiate 1000 ebullets
 }
