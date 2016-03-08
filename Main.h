@@ -23,6 +23,7 @@ class Entity {
 		form.setFillColor(col);
 	}
 	sf::Vector2f getPos() const;
+	void setPos(float x, float y);
 	float getRad() const;
 	bool isKeyDown(const int& key);
 	virtual void update(float dt) = 0;

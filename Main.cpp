@@ -61,6 +61,10 @@ sf::Vector2f Entity::getPos() const {
 	return form.getPosition();
 }
 
+void Entity::setPos(float x, float y) {
+	form.setPosition(x, y);
+}
+
 float Entity::getRad() const {
 	return form.getRadius();
 }
@@ -143,13 +147,13 @@ void EntityManager::render(sf::RenderTarget& g) {
 
 void EntityManager::resolveWallCollision() {
 	if (player->getPos().x + player->getRad() > window_width)
-		player->move(sf::Vector2f(window_width - (player->getPos().x + player->getRad()), 0));
+		player->setPos(window_width - player->getRad(), player->getPos().y);
 	else if (player->getPos().x - player->getRad() < 0)
-		player->move(sf::Vector2f(abs(player->getPos().x),0));
+		player->setPos(player->getRad(), player->getPos().y);
 	if (player->getPos().y + player->getRad() > window_height)
-		player->move(sf::Vector2f(0, window_width - (player->getPos().y + player->getRad())));
+		player->setPos(player->getPos().x, window_height - player->getRad());
 	else if (player->getPos().y - player->getRad() < 0)
-		player->move(sf::Vector2f(0, abs(player->getPos().y)));
+		player->setPos(player->getPos().x, player->getRad());
 }
 
 void initialize() {
