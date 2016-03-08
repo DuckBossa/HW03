@@ -15,6 +15,12 @@ namespace COLORS {
 	const auto EBULLET = sf::Color::Magenta;
 }
 
+namespace SPEEDS {
+	const auto PLAYER = 5.0f;
+	const auto BULLETS = 5.0f;
+	const auto ENEMY = 3.0f;
+}
+
 class Entity {
 	protected:
 	sf::CircleShape form;
@@ -50,20 +56,44 @@ class Player : public Entity {
 
 class Behavior {
 public:
-	virtual void behave() = 0;
+	virtual void behave(Entity* e) = 0;
 };
 
 class MoveForwardBehavior : public Behavior{
+private:
+	float mag;
 public:
-
+	MoveForwardBehavior(float mag) : mag(mag){}
+	void behave(Entity* e) override;
 };
+
+class ShootForwardBehavior : public Behavior {};
 
 class Bullet : public Entity {
-	
+	Behavior* move;
+public:
+	Bullet(float radius, const sf::Color &col, Behavior* move) : Entity(radius, col), move(move) {}
+	void init(float radius, const sf::Color &col, Behavior* move) {
+		form.setRadius(radius);
+		form.setOrigin(radius, radius);
+		form.setFillColor(col);
+		this->move = move;
+	}
+	//Entity(float radius,const sf::Color &col) :
 };
-
 class Enemy : public Entity {
+	Behavior* move;
+	Behavior* shoot;
 	
+public:
+	Enemy(float radius, const sf::Color &col, Behavior* move,Behavior* shoot) : Entity(radius,col),move(move),shoot(shoot){}
+	void init(float radius, const sf::Color &col, Behavior* move, Behavior* shoot) {
+		form.setRadius(radius);
+		form.setOrigin(radius, radius);
+		form.setFillColor(col);
+		this->move = move;
+		this->shoot = shoot;
+	}
 };
 
 class StageDirector {
