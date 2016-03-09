@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <queue>
 #include <iostream> /* error-checking */
 
 
@@ -22,9 +23,9 @@ namespace SPEEDS {
 }
 
 class Entity {
-	protected:
+protected:
 	sf::CircleShape form;
-	public:
+public:
 	Entity(float radius,const sf::Color &col) : form(radius) {
 		form.setFillColor(col);
 	}
@@ -40,18 +41,19 @@ class Entity {
 };
 
 class Player : public Entity {
-	private:
+private:
 	static constexpr float RADIUS = 10.0f;
 	static constexpr float SPEED = 5.0f;
 	sf::Vector2f direction;
 	
-	public:
+public:
 	Player(const sf::Vector2f &start_pos) : Entity(RADIUS,COLORS::PLAYER), direction(0, 0) {
 		form.setPosition(start_pos);
 		form.setOrigin(sf::Vector2f(RADIUS, RADIUS));
 	}
 	void update(float dt) override;
 	void handleInput();
+	void fire();
 };
 
 class Behavior {
@@ -70,8 +72,14 @@ public:
 class ShootForwardBehavior : public Behavior {};
 
 class Bullet : public Entity {
+private:
+	static constexpr float RADIUS = 5.0f;
+	static constexpr float SPEED = 10.0f;
 	Behavior* move;
 public:
+	Bullet(sf::Vector2f &start_pos) : Entity(RADIUS, COLORS::EBULLET) {
+		form.setPosition(start_pos.x, start_pos.y);
+	}
 	Bullet(float radius, const sf::Color &col, Behavior* move) : Entity(radius, col), move(move) {}
 	void init(float radius, const sf::Color &col, Behavior* move) {
 		form.setRadius(radius);
@@ -79,13 +87,20 @@ public:
 		form.setFillColor(col);
 		this->move = move;
 	}
+	void update(float dt) override;
 	//Entity(float radius,const sf::Color &col) :
 };
 class Enemy : public Entity {
+private:
+	static constexpr float RADIUS = 10.0f;
+	static constexpr float SPEED = 5.0f;
 	Behavior* move;
 	Behavior* shoot;
 	
 public:
+	Enemy(sf::Vector2f &start_pos) : Entity(RADIUS, COLORS::ENEMY) {
+		form.setPosition(start_pos.x, start_pos.y);
+	}
 	Enemy(float radius, const sf::Color &col, Behavior* move,Behavior* shoot) : Entity(radius,col),move(move),shoot(shoot){}
 	void init(float radius, const sf::Color &col, Behavior* move, Behavior* shoot) {
 		form.setRadius(radius);
@@ -94,19 +109,18 @@ public:
 		this->move = move;
 		this->shoot = shoot;
 	}
+	void update(float dt) override;
 };
-class Pool{
+
+class Pool {
 private:
 	std::queue<Bullet*> bQueue;
 	std::queue<Enemy*> eQueue;
 	
 public:
 	Bullet* getBullet();
-	
 	void returnBullet(Bullet* bull);
-	
 	Enemy* getEnemy();
-	
 	void returnEnemy(Enemy* enem);
 };
 
@@ -115,14 +129,14 @@ class StageDirector {
 };
 
 class EntityManager {
-	private:
+private:
 	Player* player;
 	std::vector<Bullet*> pbullets;
 	std::vector<Bullet*> ebullets;
 	std::vector<Enemy*> enemies;
 	bool circleCollision(const Entity& c1, const Entity& c2);
 	
-	public:
+public:
 	EntityManager() {}
 	void addPlayer(Entity* player);
 	void handleInput();

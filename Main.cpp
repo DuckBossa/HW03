@@ -110,14 +110,23 @@ void Player::fire(){
 	}
 }
 
+void Bullet::update(float dt) {
+	/* the bullet doesn't move yet. for testing purposes. */
+}
+
+void Enemy::update(float dt) {
+	/* enemy's don't move for testing purposes */
+}
+
 Bullet* Pool::getBullet(){
-	if(!bQueue.isEmpty()){
+	if(!bQueue.empty()){
 		Bullet* tmp = bQueue.front();
 		bQueue.pop();
-		return tmpB;
+		return tmp;
 	}
 	else{
-		return new Bullet();
+		sf::Vector2f start_pos(10, 10);
+		return new Bullet(start_pos);
 	}
 }
 
@@ -126,13 +135,14 @@ void Pool::returnBullet(Bullet* bull){
 }
 
 Enemy* Pool::getEnemy(){
-	if(!eQueue.isEmpty()){
+	if(!eQueue.empty()){
 		Enemy* tmp = eQueue.front();
 		eQueue.pop();
-		return tmpE;
+		return tmp;
 	}
 	else{
-		return new Enemy();
+		sf::Vector2f start_pos(50, 50);
+		return new Enemy(start_pos);
 	}
 }
 
