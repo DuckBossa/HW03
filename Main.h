@@ -9,6 +9,9 @@
 #include <algorithm>
 #include <iostream> /* error-checking */
 
+namespace Fonts {
+	const std::string SCORE = "fonts/ShareTechMono-Regular.ttf";
+}
 
 namespace COLORS {
 	const auto PLAYER = sf::Color::Blue;
@@ -23,9 +26,33 @@ namespace SPEEDS {
 	const auto ENEMY = 3.0f;
 }
 
+class Score {
+private:
+	const int CHAR_SIZE = 16;
+	const std::string SCORE = "Score: ";
+	sf::Text text;
+	sf::Font font;
+	int score;
+	
+public:
+	Score() : score(0) {
+		if (!font.loadFromFile(Fonts::SCORE)) {
+			/* font loading error */
+		}
+		text.setFont(font);
+		text.setCharacterSize(CHAR_SIZE);
+		text.setColor(sf::Color::White);
+		text.setPosition(0, 0);
+	}
+	void setPosition();
+	void add();
+	void draw(sf::RenderTarget& g);
+};
+
 class Entity {
 protected:
 	sf::CircleShape form;
+	
 public:
 	Entity(float radius,const sf::Color &col) : form(radius) {
 		form.setFillColor(col);
@@ -33,12 +60,9 @@ public:
 	sf::Vector2f getPos() const;
 	void setPos(float x, float y);
 	float getRad() const;
-	bool isKeyDown(const int& key);
 	virtual void update(float dt) = 0;
 	void render(sf::RenderTarget& g);
-	void move(const sf::Vector2f &dir) {
-		form.move(dir);
-	}
+	void move(const sf::Vector2f &dir);
 };
 
 class Player : public Entity {
@@ -46,17 +70,18 @@ private:
 	static constexpr float RADIUS = 10.0f;
 	static constexpr float SPEED = 5.0f;
 	sf::Vector2f direction;
-	int hits;
+	Score score;
 	
 public:
-	Player(const sf::Vector2f &start_pos) : Entity(RADIUS,COLORS::PLAYER), direction(0, 0), hits(0) {
+	Player(const sf::Vector2f &start_pos) : Entity(RADIUS,COLORS::PLAYER), direction(0, 0) {
 		form.setPosition(start_pos);
 		form.setOrigin(sf::Vector2f(RADIUS, RADIUS));
 	}
-	void update(float dt) override;
 	void handleInput();
 	void fire();
 	void takeDamage();
+	void update(float dt) override;
+	void renderScore(sf::RenderTarget& g);
 };
 
 class Behavior {
@@ -79,6 +104,7 @@ private:
 	static constexpr float RADIUS = 5.0f;
 	static constexpr float SPEED = 10.0f;
 	Behavior* move;
+	
 public:
 	Bullet(const sf::Vector2f &start_pos) : Entity(RADIUS, COLORS::EBULLET) {
 		form.setPosition(start_pos.x, start_pos.y);
@@ -93,6 +119,7 @@ public:
 	void update(float dt) override;
 	//Entity(float radius,const sf::Color &col) :
 };
+
 class Enemy : public Entity {
 private:
 	static constexpr float RADIUS = 10.0f;
@@ -152,3 +179,4 @@ public:
 } em;
 
 void initialize();
+bool isKeyDown(const int& key);

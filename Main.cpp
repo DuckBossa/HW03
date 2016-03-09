@@ -58,6 +58,15 @@ int main() {
 	return 0;
 }
 
+void Score::add() {
+	++score;
+}
+
+void Score::draw(sf::RenderTarget& g) {
+	text.setString(SCORE + std::to_string(score));
+	g.draw(text);
+}
+
 sf::Vector2f Entity::getPos() const {
 	return form.getPosition();
 }
@@ -70,13 +79,12 @@ float Entity::getRad() const {
 	return form.getRadius();
 }
 
-bool Entity::isKeyDown(const int& key) {
-	short state = GetAsyncKeyState(MapVirtualKey(key, MAPVK_VSC_TO_VK_EX));
-	return state >> 15 != 0;
-}
-
 void Entity::render(sf::RenderTarget& g) {
 	g.draw(form);
+}
+
+void Entity::move(const sf::Vector2f &dir) {
+	form.move(dir);
 }
 
 void Player::update(float dt) {
@@ -112,7 +120,11 @@ void Player::fire(){
 }
 
 void Player::takeDamage() {
-	++hits;
+	score.add();
+}
+
+void Player::renderScore(sf::RenderTarget& g) {
+	score.draw(g);
 }
 
 void Bullet::update(float dt) {
@@ -152,6 +164,7 @@ Enemy* Pool::getEnemy(){
 void Pool::returnEnemy(Enemy* enem){
 	eQueue.push(enem);
 }
+
 bool EntityManager::circleCollision(const Entity& c1, const Entity& c2) {
 	const auto c1p = c1.getPos();
 	const auto c2p = c2.getPos();
@@ -201,6 +214,7 @@ void EntityManager::logic() {
 
 void EntityManager::render(sf::RenderTarget& g) {
 	player->render(g);
+	player->renderScore(g);
 	
 	for (Bullet* bullet : ebullets) {
 		bullet->render(g);
@@ -228,4 +242,9 @@ void initialize() {
 	//instantiate 50 pbullets
 	//instantiate 1000 enemies
 	//instantiate 1000 ebullets
+}
+
+bool isKeyDown(const int& key) {
+	short state = GetAsyncKeyState(MapVirtualKey(key, MAPVK_VSC_TO_VK_EX));
+	return state >> 15 != 0;
 }
