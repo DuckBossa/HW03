@@ -6,6 +6,7 @@
 #include <vector>
 #include <cmath>
 #include <queue>
+#include <algorithm>
 #include <iostream> /* error-checking */
 
 
@@ -45,15 +46,17 @@ private:
 	static constexpr float RADIUS = 10.0f;
 	static constexpr float SPEED = 5.0f;
 	sf::Vector2f direction;
+	int hits;
 	
 public:
-	Player(const sf::Vector2f &start_pos) : Entity(RADIUS,COLORS::PLAYER), direction(0, 0) {
+	Player(const sf::Vector2f &start_pos) : Entity(RADIUS,COLORS::PLAYER), direction(0, 0), hits(0) {
 		form.setPosition(start_pos);
 		form.setOrigin(sf::Vector2f(RADIUS, RADIUS));
 	}
 	void update(float dt) override;
 	void handleInput();
 	void fire();
+	void takeDamage();
 };
 
 class Behavior {
@@ -77,7 +80,7 @@ private:
 	static constexpr float SPEED = 10.0f;
 	Behavior* move;
 public:
-	Bullet(sf::Vector2f &start_pos) : Entity(RADIUS, COLORS::EBULLET) {
+	Bullet(const sf::Vector2f &start_pos) : Entity(RADIUS, COLORS::EBULLET) {
 		form.setPosition(start_pos.x, start_pos.y);
 	}
 	Bullet(float radius, const sf::Color &col, Behavior* move) : Entity(radius, col), move(move) {}
@@ -98,7 +101,7 @@ private:
 	Behavior* shoot;
 	
 public:
-	Enemy(sf::Vector2f &start_pos) : Entity(RADIUS, COLORS::ENEMY) {
+	Enemy(const sf::Vector2f &start_pos) : Entity(RADIUS, COLORS::ENEMY) {
 		form.setPosition(start_pos.x, start_pos.y);
 	}
 	Enemy(float radius, const sf::Color &col, Behavior* move,Behavior* shoot) : Entity(radius,col),move(move),shoot(shoot){}
@@ -139,6 +142,8 @@ private:
 public:
 	EntityManager() {}
 	void addPlayer(Entity* player);
+	void addEnemy(Entity* enemy);
+	void addBullet(Entity* bullet); /* not sure if there's gonna be separate functions for adding enemy- and player-bullets */
 	void handleInput();
 	void update(float dt);
 	void logic();

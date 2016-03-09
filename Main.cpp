@@ -80,7 +80,7 @@ void Entity::render(sf::RenderTarget& g) {
 }
 
 void Player::update(float dt) {
-	form.move(SPEED * direction);
+	form.move(SPEED*direction);
 }
 
 void Player::handleInput() {
@@ -100,14 +100,19 @@ void Player::handleInput() {
 	}
 	direction.x *= 1 - std::abs(direction.y)*(std::sqrt(2) - 1)/std::sqrt(2);
 	direction.y *= 1 - std::abs(direction.x)*(std::sqrt(2) - 1)/std::sqrt(2);
+	
+	if (isKeyDown(Keys::FIRE)) {
+		fire();
+	}
 }
 
 void Player::fire(){
-	if (isKeyDown(Keys::FIRE)){
-		//pew pew;
-		// class pool...?
-		
-	}
+	//pew pew;
+	// class pool...?
+}
+
+void Player::takeDamage() {
+	++hits;
 }
 
 void Bullet::update(float dt) {
@@ -125,8 +130,7 @@ Bullet* Pool::getBullet(){
 		return tmp;
 	}
 	else{
-		sf::Vector2f start_pos(10, 10);
-		return new Bullet(start_pos);
+		return new Bullet(sf::Vector2f(0, 0));
 	}
 }
 
@@ -141,8 +145,7 @@ Enemy* Pool::getEnemy(){
 		return tmp;
 	}
 	else{
-		sf::Vector2f start_pos(50, 50);
-		return new Enemy(start_pos);
+		return new Enemy(sf::Vector2f(0, 0));
 	}
 }
 
@@ -159,22 +162,32 @@ void EntityManager::addPlayer(Entity* player) {
 	this->player = dynamic_cast<Player*>(player);
 }
 
+void EntityManager::addEnemy(Entity* enemy) {
+	this->enemies.push_back(dynamic_cast<Enemy*>(enemy));
+}
+
+void EntityManager::addBullet(Entity* bullet) {
+	this->ebullets.push_back(dynamic_cast<Bullet*>(bullet)); /* temporarily adding all bullets into enemy-bullets vector */
+}
+
 void EntityManager::handleInput() {
 	player->handleInput();
 }
 
 void EntityManager::update(float dt) {
-		player->update(dt);
+	player->update(dt);
 }
 
 void EntityManager::logic() {
 	resolveWallCollision();
 
-	for (auto bullet : ebullets) {
-			if (circleCollision(*bullet, *player)) {
-				//damage
-			}
-
+	for (int i = 0; i < ebullets.size() ; i += 0) {
+		if (circleCollision(*ebullets.at(i), *player)) {
+			player->takeDamage();
+			ebullets.erase(ebullets.begin() + i);
+		} else {
+			++i;
+		}
 	}
 
 	for (auto bullet : pbullets) {
@@ -184,14 +197,15 @@ void EntityManager::logic() {
 			}
 		}
 	}
-
-
 }
 
 void EntityManager::render(sf::RenderTarget& g) {
 	player->render(g);
+	
+	for (Bullet* bullet : ebullets) {
+		bullet->render(g);
+	}
 }
-
 
 void EntityManager::resolveWallCollision() {
 	if (player->getPos().x + player->getRad() > window_width)
@@ -205,7 +219,12 @@ void EntityManager::resolveWallCollision() {
 }
 
 void initialize() {
-	em.addPlayer(new Player(sf::Vector2f(50,50)));
+	em.addPlayer(new Player(sf::Vector2f(50, 50)));
+	for (int i = 0; i < window_width; i += window_width/10) {
+		for (int j = 0; j < window_height; j += window_height/10) {
+			em.addBullet(new Bullet(sf::Vector2f(i, j))); /* creating a stationary bullet */
+		}
+	}
 	//instantiate 50 pbullets
 	//instantiate 1000 enemies
 	//instantiate 1000 ebullets
