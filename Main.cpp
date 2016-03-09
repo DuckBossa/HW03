@@ -12,6 +12,7 @@ namespace Keys {
 	const auto DOWN = 0x1f;		/* s */
 	const auto LEFT = 0x1e;		/* a */
 	const auto RIGHT = 0x20;	/* d */
+	const auto FIRE = 0x39;		/*spacebar*/
 }
 
 int main() {
@@ -101,6 +102,43 @@ void Player::handleInput() {
 	direction.y *= 1 - std::abs(direction.x)*(std::sqrt(2) - 1)/std::sqrt(2);
 }
 
+void Player::fire(){
+	if (isKeyDown(Keys::FIRE)){
+		//pew pew;
+		// class pool...?
+		
+	}
+}
+
+Bullet* Pool::getBullet(){
+	if(!bQueue.isEmpty()){
+		Bullet* tmp = bQueue.front();
+		bQueue.pop();
+		return tmpB;
+	}
+	else{
+		return new Bullet();
+	}
+}
+
+void Pool::returnBullet(Bullet* bull){
+	bQueue.push(bull);
+}
+
+Enemy* Pool::getEnemy(){
+	if(!eQueue.isEmpty()){
+		Enemy* tmp = eQueue.front();
+		eQueue.pop();
+		return tmpE;
+	}
+	else{
+		return new Enemy();
+	}
+}
+
+void Pool::returnEnemy(Enemy* enem){
+	eQueue.push(enem);
+}
 bool EntityManager::circleCollision(const Entity& c1, const Entity& c2) {
 	const auto c1p = c1.getPos();
 	const auto c2p = c2.getPos();
