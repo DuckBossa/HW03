@@ -95,6 +95,20 @@ public:
 		this->shoot = shoot;
 	}
 };
+class Pool{
+private:
+	std::queue<Bullet*> bQueue;
+	std::queue<Enemy*> eQueue;
+	
+public:
+	Bullet* getBullet();
+	
+	void returnBullet(Bullet* bull);
+	
+	Enemy* getEnemy();
+	
+	void returnEnemy(Enemy* enem);
+};
 
 class StageDirector {
 
