@@ -4,23 +4,15 @@
 #define SPF sf::seconds(1.0f/FPS)
 
 const double PI = std::acos(-1);
-const auto window_height = 800;
-const auto window_width = 400;
-
-namespace Keys {
-	const auto UP = 0x11;		/* w */
-	const auto DOWN = 0x1f;		/* s */
-	const auto LEFT = 0x1e;		/* a */
-	const auto RIGHT = 0x20;	/* d */
-	const auto FIRE = 0x39;		/*spacebar*/
-}
+const auto window_height = 600;
+const auto window_width = 600;
 
 int main() {
 	sf::RenderWindow window(sf::VideoMode(window_width,window_height), "My Window");
 	sf::Clock clock;
 	sf::Time lag = sf::seconds(0);
 	
-	initialize();
+	em.initialize();
 	
 	/* run the program as long as the window is open */
 	while (window.isOpen()) {
@@ -67,6 +59,7 @@ void Score::draw(sf::RenderTarget& g) {
 	g.draw(text);
 }
 
+/*Entity*/
 sf::Vector2f Entity::getPos() const {
 	return form.getPosition();
 }
@@ -79,16 +72,18 @@ float Entity::getRad() const {
 	return form.getRadius();
 }
 
+bool Entity::isKeyDown(const int& key) {
+	short state = GetAsyncKeyState(MapVirtualKey(key, MAPVK_VSC_TO_VK_EX));
+	return state >> 15 != 0;
+}
+
 void Entity::render(sf::RenderTarget& g) {
 	g.draw(form);
 }
 
-void Entity::move(const sf::Vector2f &dir) {
-	form.move(dir);
-}
-
+/*Player*/
 void Player::update(float dt) {
-	form.move(SPEED*direction);
+	form.move(SPEEDS::PLAYER * direction);
 }
 
 void Player::handleInput() {
@@ -108,15 +103,12 @@ void Player::handleInput() {
 	}
 	direction.x *= 1 - std::abs(direction.y)*(std::sqrt(2) - 1)/std::sqrt(2);
 	direction.y *= 1 - std::abs(direction.x)*(std::sqrt(2) - 1)/std::sqrt(2);
-	
-	if (isKeyDown(Keys::FIRE)) {
-		fire();
-	}
 }
 
-void Player::fire(){
-	//pew pew;
-	// class pool...?
+void Player::fire() {
+	if (isKeyDown(Keys::FIRE)) {
+		
+	}
 }
 
 void Player::takeDamage() {
@@ -127,44 +119,7 @@ void Player::renderScore(sf::RenderTarget& g) {
 	score.draw(g);
 }
 
-void Bullet::update(float dt) {
-	/* the bullet doesn't move yet. for testing purposes. */
-}
-
-void Enemy::update(float dt) {
-	/* enemy's don't move for testing purposes */
-}
-
-Bullet* Pool::getBullet(){
-	if(!bQueue.empty()){
-		Bullet* tmp = bQueue.front();
-		bQueue.pop();
-		return tmp;
-	}
-	else{
-		return new Bullet(sf::Vector2f(0, 0));
-	}
-}
-
-void Pool::returnBullet(Bullet* bull){
-	bQueue.push(bull);
-}
-
-Enemy* Pool::getEnemy(){
-	if(!eQueue.empty()){
-		Enemy* tmp = eQueue.front();
-		eQueue.pop();
-		return tmp;
-	}
-	else{
-		return new Enemy(sf::Vector2f(0, 0));
-	}
-}
-
-void Pool::returnEnemy(Enemy* enem){
-	eQueue.push(enem);
-}
-
+/*Entity Manager*/
 bool EntityManager::circleCollision(const Entity& c1, const Entity& c2) {
 	const auto c1p = c1.getPos();
 	const auto c2p = c2.getPos();
@@ -175,34 +130,34 @@ void EntityManager::addPlayer(Entity* player) {
 	this->player = dynamic_cast<Player*>(player);
 }
 
-void EntityManager::addEnemy(Entity* enemy) {
-	this->enemies.push_back(dynamic_cast<Enemy*>(enemy));
-}
-
-void EntityManager::addBullet(Entity* bullet) {
-	this->ebullets.push_back(dynamic_cast<Bullet*>(bullet)); /* temporarily adding all bullets into enemy-bullets vector */
-}
-
 void EntityManager::handleInput() {
 	player->handleInput();
 }
 
 void EntityManager::update(float dt) {
-	player->update(dt);
+		player->update(dt);
+		for (auto bullet : ebullets) {
+			bullet->update(dt);
+		}
+		for (auto enemy : enemies) {
+			enemy->update(dt);
+		}
 }
 
 void EntityManager::logic() {
 	resolveWallCollision();
-
-	for (int i = 0; i < ebullets.size() ; i += 0) {
-		if (circleCollision(*ebullets.at(i), *player)) {
-			player->takeDamage();
-			ebullets.erase(ebullets.begin() + i);
-		} else {
-			++i;
-		}
+	for (int i = ebullets.size() - 1; i >= 0; i--) {
+		Bullet* bullet = ebullets[i];
+			if (circleCollision(*bullet, *player)) {
+				player->takeDamage();
+				ebullets.erase(ebullets.begin() + i);
+			}
+			if (recycle(bullet)) {
+				ebullets.erase(ebullets.begin() + i);
+				pool.returnBullet(bullet);
+			}
 	}
-
+/*
 	for (auto bullet : pbullets) {
 		for (auto enemy : enemies) {
 			if (circleCollision(*bullet, *enemy)) {
@@ -210,15 +165,30 @@ void EntityManager::logic() {
 			}
 		}
 	}
+*/
+
 }
 
 void EntityManager::render(sf::RenderTarget& g) {
 	player->render(g);
 	player->renderScore(g);
 	
-	for (Bullet* bullet : ebullets) {
+	for (auto bullet : ebullets) {
 		bullet->render(g);
 	}
+	for (auto enemy : enemies) {
+		enemy->render(g);
+	}
+}
+
+void EntityManager::enemyShoot(const sf::Vector2f &startpos, const sf::Vector2f vel) {
+	Bullet* temp = pool.getBullet();
+	temp->init(RADII::EBULLET, COLORS::EBULLET, startpos, vel);
+	ebullets.push_back(temp);
+}
+
+bool EntityManager::recycle(Bullet* bull) {
+	return (bull->getPos().x - bull->getRad() > window_width) || (bull->getPos().x + bull->getRad() < 0) || (bull->getPos().y + bull->getRad() < 0) || (bull->getPos().y - bull->getRad() > window_height);
 }
 
 void EntityManager::resolveWallCollision() {
@@ -232,19 +202,118 @@ void EntityManager::resolveWallCollision() {
 		player->setPos(player->getPos().x, player->getRad());
 }
 
-void initialize() {
-	em.addPlayer(new Player(sf::Vector2f(50, 50)));
-	for (int i = 0; i < window_width; i += window_width/10) {
-		for (int j = 0; j < window_height; j += window_height/10) {
-			em.addBullet(new Bullet(sf::Vector2f(i, j))); /* creating a stationary bullet */
-		}
-	}
-	//instantiate 50 pbullets
-	//instantiate 1000 enemies
-	//instantiate 1000 ebullets
+void EntityManager::initialize() {
+	addPlayer(new Player(sf::Vector2f(window_width/2,window_height*3.0/4.0)));
+	pool.Init();
+	std::vector<sf::Vector2f*>temp;
+	temp.push_back(new sf::Vector2f(window_width / 2, window_height / 4 + 15.0f));
+	temp.push_back(new sf::Vector2f(window_width / 2, window_height / 4 - 15.0f));
+	temp.push_back(new sf::Vector2f(window_width / 2 - 15.0f , window_height / 4 ));
+	temp.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 4));
+	enemies.push_back(new Enemy(RADII::ENEMY,COLORS::ENEMY,sf::Vector2f(window_width/2,window_height/4),temp,new CircularShoot(0.05f,10.0f,0.05f)));
+	std::vector<sf::Vector2f*>temp2;
+	temp2.push_back(new sf::Vector2f(window_width/3, window_height / 3 + 15.0f));
+	temp2.push_back(new sf::Vector2f(window_width/3, window_height / 3 - 15.0f));
+	temp2.push_back(new sf::Vector2f(window_width/3 + 15.0f , window_height / 3));
+	temp2.push_back(new sf::Vector2f(window_width/3 - 15.0f, window_height / 3 ));
+	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 3, window_height / 3), temp2, new CircularShoot(0.05f, -10.0f, 0.05f)));
+	std::vector<sf::Vector2f*>temp3;
+	temp3.push_back(new sf::Vector2f(window_width*2/3, window_height / 3 + 15.0f));
+	temp3.push_back(new sf::Vector2f(window_width*2/3, window_height / 3 - 15.0f));
+	temp3.push_back(new sf::Vector2f(window_width*2/3 + 15.0f, window_height / 3));
+	temp3.push_back(new sf::Vector2f(window_width*2/3 - 15.0f, window_height / 3));
+	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width*2/ 3, window_height / 3), temp3, new CircularShoot(0.05f, 10.0f, 0.05f)));
+	std::vector<sf::Vector2f*>temp4;
+	temp4.push_back(new sf::Vector2f(window_width / 2, window_height / 3 + 15.0f));
+	temp4.push_back(new sf::Vector2f(window_width / 2, window_height /  3 - 15.0f));
+	temp4.push_back(new sf::Vector2f(window_width / 2 - 15.0f, window_height / 3));
+	temp4.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 3));
+	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 2, window_height / 3), temp4, new CircularShoot(0.05f, -10.0f, 0.05f)));
+
 }
 
-bool isKeyDown(const int& key) {
-	short state = GetAsyncKeyState(MapVirtualKey(key, MAPVK_VSC_TO_VK_EX));
-	return state >> 15 != 0;
+
+/*Move Behaviors*/
+void MoveForwardBehavior::behave(Entity* e,float dt) {
+	e->moveEntity(sf::Vector2f(0, mag)*dt);
+}
+
+/*Shooting Behaviors*/
+void CircularShoot::shoot(float dt, Entity* e) {
+	timerR += dt;
+	timerS += dt;
+	if (timerR >= rotatePerSec) {
+		dynamic_cast<Enemy*>(e)->rotateShootingPos(angleToRotate);
+		timerR = 0;
+	}
+	if (timerS >= firingRate) {
+		Enemy* temp = dynamic_cast<Enemy*>(e);
+		for (auto x : temp->shootingPos) {
+			sf::Vector2f dir = *x - temp->getPos();
+			float mag = sqrt(dir.x * dir.x + dir.y * dir.y);
+			em.enemyShoot(*x, dir / mag*SPEEDS::BULLETS);
+		}
+		timerS = 0;
+	}
+}
+
+
+/*Bullets*/
+void Bullet::update(float dt) {
+	form.move(vel*dt);
+}
+
+/*Enemy*/
+void Enemy::rotateShootingPos(float angle){
+	float s = sin(angle*PI / 180.0f);
+	float c = cos(angle*PI / 180.0f);
+	for (auto pos : shootingPos) {
+		pos->x -= getPos().x;
+		pos->y -= getPos().y;
+		float xnew = pos->x * c - pos->y * s;
+		float ynew = pos->x * s + pos->y * c;
+		pos->x = xnew + getPos().x;
+		pos->y = ynew + getPos().y;
+	}
+}
+
+void Enemy::update(float dt) {
+	shoot->shoot(dt,this);
+}
+
+/*Pool*/
+Bullet* Pool::getBullet() {
+	
+	if (!bQueue.empty()) {
+		Bullet* tmp = bQueue.front();
+		bQueue.pop();
+		return tmp;
+	}
+	else
+		return nullptr;
+}
+
+void Pool::returnBullet(Bullet* bull) {
+	bQueue.push(bull);
+}
+
+Enemy* Pool::getEnemy() {
+	if (!eQueue.empty()) {
+		Enemy* tmp = eQueue.front();
+		eQueue.pop();
+		return tmp;
+	}
+	else
+		return nullptr;
+}
+
+void Pool::returnEnemy(Enemy* enem) {
+	eQueue.push(enem);
+}
+
+
+void Pool::Init() {
+	for (int i = 0; i < 2000; i++) {
+		bQueue.push(new Bullet());
+	}
 }

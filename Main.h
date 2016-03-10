@@ -4,13 +4,20 @@
 
 #include <string>
 #include <vector>
-#include <cmath>
 #include <queue>
-#include <algorithm>
+#include <cmath>
 #include <iostream> /* error-checking */
 
 namespace Fonts {
 	const std::string SCORE = "fonts/ShareTechMono-Regular.ttf";
+}
+
+namespace Keys {
+	const auto UP = 0x11;		/* w */
+	const auto DOWN = 0x1f;		/* s */
+	const auto LEFT = 0x1e;		/* a */
+	const auto RIGHT = 0x20;	/* d */
+	const auto FIRE = 0x39;		/*spacebar*/
 }
 
 namespace COLORS {
@@ -22,9 +29,22 @@ namespace COLORS {
 
 namespace SPEEDS {
 	const auto PLAYER = 5.0f;
-	const auto BULLETS = 5.0f;
+	const auto BULLETS = 250.0f;
 	const auto ENEMY = 3.0f;
 }
+
+namespace RADII {
+	const auto PLAYER = 10.0f;
+	const auto ENEMY = 15.0f;
+	const auto EBULLET = 5.0f;
+	const auto PBULLET = 5.0f;
+}
+
+namespace FIRINGRATES {
+	const auto PLAYER = 0.5f;
+}
+
+using namespace std;
 
 class Score {
 private:
@@ -50,32 +70,36 @@ public:
 };
 
 class Entity {
-protected:
+	protected:
 	sf::CircleShape form;
-	
-public:
+	public:
+	Entity(){}
 	Entity(float radius,const sf::Color &col) : form(radius) {
 		form.setFillColor(col);
 	}
 	sf::Vector2f getPos() const;
 	void setPos(float x, float y);
 	float getRad() const;
+	bool isKeyDown(const int& key);
 	virtual void update(float dt) = 0;
 	void render(sf::RenderTarget& g);
-	void move(const sf::Vector2f &dir);
+	void moveEntity(const sf::Vector2f &dir) {
+		form.move(dir);
+	}
+	~Entity(){}
 };
 
 class Player : public Entity {
-private:
-	static constexpr float RADIUS = 10.0f;
+	private:
 	static constexpr float SPEED = 5.0f;
 	sf::Vector2f direction;
+	int spf;//shots per frame
 	Score score;
 	
-public:
-	Player(const sf::Vector2f &start_pos) : Entity(RADIUS,COLORS::PLAYER), direction(0, 0) {
+	public:
+	Player(const sf::Vector2f &start_pos) : Entity(RADII::PLAYER,COLORS::PLAYER), direction(0, 0) {
 		form.setPosition(start_pos);
-		form.setOrigin(sf::Vector2f(RADIUS, RADIUS));
+		form.setOrigin(sf::Vector2f(RADII::PLAYER, RADII::PLAYER));
 	}
 	void handleInput();
 	void fire();
@@ -84,99 +108,124 @@ public:
 	void renderScore(sf::RenderTarget& g);
 };
 
-class Behavior {
+class MoveBehavior {
 public:
-	virtual void behave(Entity* e) = 0;
+	virtual void behave(Entity* e, float dt) = 0;
 };
 
-class MoveForwardBehavior : public Behavior{
+class MoveForwardBehavior : public MoveBehavior{
 private:
 	float mag;
 public:
 	MoveForwardBehavior(float mag) : mag(mag){}
-	void behave(Entity* e) override;
+	void behave(Entity* e,float dt) override;
 };
 
-class ShootForwardBehavior : public Behavior {};
+
+class ShootingBehavior {
+public:
+	ShootingBehavior(){}
+	~ShootingBehavior(){}
+	virtual void shoot(float dt,Entity* e) = 0;
+};
+
+class CircularShoot : public ShootingBehavior{
+private:
+	float rotatePerSec;
+	float angleToRotate;
+	float firingRate;
+	float timerR;
+	float timerS;
+public:
+	CircularShoot(float rotatePerSec, float angleToRotate,float firingRate) :rotatePerSec(rotatePerSec), angleToRotate(angleToRotate),firingRate(firingRate){
+		timerR = timerS = 0;
+	}
+	void shoot(float dt,Entity* e) override;
+};
+
 
 class Bullet : public Entity {
 private:
-	static constexpr float RADIUS = 5.0f;
-	static constexpr float SPEED = 10.0f;
-	Behavior* move;
-	
+	sf::Vector2f vel;
 public:
-	Bullet(const sf::Vector2f &start_pos) : Entity(RADIUS, COLORS::EBULLET) {
-		form.setPosition(start_pos.x, start_pos.y);
-	}
-	Bullet(float radius, const sf::Color &col, Behavior* move) : Entity(radius, col), move(move) {}
-	void init(float radius, const sf::Color &col, Behavior* move) {
+	Bullet() {}
+	Bullet(float radius, const sf::Color &col, const sf::Vector2f &startpos, const sf::Vector2f &vel) : Entity(radius, col), vel(vel) {
 		form.setRadius(radius);
 		form.setOrigin(radius, radius);
 		form.setFillColor(col);
-		this->move = move;
+		form.setPosition(startpos);
+	}
+	void init(float radius, const sf::Color &col, const sf::Vector2f &startpos, const sf::Vector2f &vel) {
+		form.setRadius(radius);
+		form.setOrigin(radius, radius);
+		form.setFillColor(col);
+		form.setPosition(startpos);
+		this->vel = vel;
 	}
 	void update(float dt) override;
-	//Entity(float radius,const sf::Color &col) :
 };
-
 class Enemy : public Entity {
-private:
-	static constexpr float RADIUS = 10.0f;
-	static constexpr float SPEED = 5.0f;
-	Behavior* move;
-	Behavior* shoot;
-	
+	//MoveBehavior* move;
+	ShootingBehavior* shoot;
 public:
-	Enemy(const sf::Vector2f &start_pos) : Entity(RADIUS, COLORS::ENEMY) {
-		form.setPosition(start_pos.x, start_pos.y);
-	}
-	Enemy(float radius, const sf::Color &col, Behavior* move,Behavior* shoot) : Entity(radius,col),move(move),shoot(shoot){}
-	void init(float radius, const sf::Color &col, Behavior* move, Behavior* shoot) {
+	//sf::Vector2f shootingpos;
+	std::vector<sf::Vector2f*>shootingPos;
+	Enemy(float radius, const sf::Color &col, const sf::Vector2f &startpos, const std::vector<sf::Vector2f*> &shootingpos,ShootingBehavior* shoot) : Entity(radius,col), shootingPos(shootingpos), shoot(shoot){
 		form.setRadius(radius);
 		form.setOrigin(radius, radius);
 		form.setFillColor(col);
-		this->move = move;
-		this->shoot = shoot;
+		form.setPosition(startpos);
 	}
+	void init(float radius, const sf::Color &col, const sf::Vector2f &startpos, const std::vector<sf::Vector2f*> &shootingpos, ShootingBehavior* shoot) {
+		form.setRadius(radius);
+		form.setOrigin(radius, radius);
+		form.setFillColor(col);
+		form.setPosition(startpos);
+		this->shootingPos = shootingpos;
+	}
+
+	void rotateShootingPos(float angle);
 	void update(float dt) override;
 };
-
-class Pool {
+class Pool{
 private:
 	std::queue<Bullet*> bQueue;
 	std::queue<Enemy*> eQueue;
-	
+
 public:
 	Bullet* getBullet();
-	void returnBullet(Bullet* bull);
 	Enemy* getEnemy();
+
+
+	void returnBullet(Bullet* bull);
 	void returnEnemy(Enemy* enem);
+
+	void Init();
 };
 
-class StageDirector {
-
-};
 
 class EntityManager {
-private:
+	private:
 	Player* player;
 	std::vector<Bullet*> pbullets;
 	std::vector<Bullet*> ebullets;
 	std::vector<Enemy*> enemies;
+	Pool pool;
 	bool circleCollision(const Entity& c1, const Entity& c2);
-	
-public:
+	public:
 	EntityManager() {}
 	void addPlayer(Entity* player);
-	void addEnemy(Entity* enemy);
-	void addBullet(Entity* bullet); /* not sure if there's gonna be separate functions for adding enemy- and player-bullets */
+	void enemyShoot(const sf::Vector2f &startpos, const sf::Vector2f vel);
 	void handleInput();
 	void update(float dt);
 	void logic();
 	void render(sf::RenderTarget& g);
 	void resolveWallCollision();
+	void initialize();
+	bool recycle(Bullet* bull);
 } em;
 
-void initialize();
-bool isKeyDown(const int& key);
+
+class StageDirector {
+
+};
