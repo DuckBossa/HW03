@@ -36,7 +36,7 @@ namespace SPEEDS {
 namespace RADII {
 	const auto PLAYER = 10.0f;
 	const auto ENEMY = 15.0f;
-	const auto EBULLET = 5.0f;
+	const auto EBULLET = 2.5f;
 	const auto PBULLET = 5.0f;
 }
 

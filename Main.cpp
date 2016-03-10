@@ -142,6 +142,7 @@ void EntityManager::update(float dt) {
 		for (auto enemy : enemies) {
 			enemy->update(dt);
 		}
+		cout << "Num of bullets: " << ebullets.size() << "\n";
 }
 
 void EntityManager::logic() {
@@ -151,6 +152,7 @@ void EntityManager::logic() {
 			if (circleCollision(*bullet, *player)) {
 				player->takeDamage();
 				ebullets.erase(ebullets.begin() + i);
+				pool.returnBullet(bullet);
 			}
 			if (recycle(bullet)) {
 				ebullets.erase(ebullets.begin() + i);
@@ -210,26 +212,43 @@ void EntityManager::initialize() {
 	temp.push_back(new sf::Vector2f(window_width / 2, window_height / 4 - 15.0f));
 	temp.push_back(new sf::Vector2f(window_width / 2 - 15.0f , window_height / 4 ));
 	temp.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 4));
-	enemies.push_back(new Enemy(RADII::ENEMY,COLORS::ENEMY,sf::Vector2f(window_width/2,window_height/4),temp,new CircularShoot(0.05f,10.0f,0.05f)));
+	enemies.push_back(new Enemy(RADII::ENEMY,COLORS::ENEMY,sf::Vector2f(window_width/2,window_height/4),temp,new CircularShoot(0.05f,10.0f,0.02f)));
 	std::vector<sf::Vector2f*>temp2;
 	temp2.push_back(new sf::Vector2f(window_width/3, window_height / 3 + 15.0f));
 	temp2.push_back(new sf::Vector2f(window_width/3, window_height / 3 - 15.0f));
 	temp2.push_back(new sf::Vector2f(window_width/3 + 15.0f , window_height / 3));
 	temp2.push_back(new sf::Vector2f(window_width/3 - 15.0f, window_height / 3 ));
-	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 3, window_height / 3), temp2, new CircularShoot(0.05f, -10.0f, 0.05f)));
+	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 3, window_height / 3), temp2, new CircularShoot(0.05f, -10.0f, 0.02f)));
 	std::vector<sf::Vector2f*>temp3;
 	temp3.push_back(new sf::Vector2f(window_width*2/3, window_height / 3 + 15.0f));
 	temp3.push_back(new sf::Vector2f(window_width*2/3, window_height / 3 - 15.0f));
 	temp3.push_back(new sf::Vector2f(window_width*2/3 + 15.0f, window_height / 3));
 	temp3.push_back(new sf::Vector2f(window_width*2/3 - 15.0f, window_height / 3));
-	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width*2/ 3, window_height / 3), temp3, new CircularShoot(0.05f, 10.0f, 0.05f)));
+	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width*2/ 3, window_height / 3), temp3, new CircularShoot(0.05f, 10.0f, 0.02f)));
 	std::vector<sf::Vector2f*>temp4;
 	temp4.push_back(new sf::Vector2f(window_width / 2, window_height / 3 + 15.0f));
 	temp4.push_back(new sf::Vector2f(window_width / 2, window_height /  3 - 15.0f));
 	temp4.push_back(new sf::Vector2f(window_width / 2 - 15.0f, window_height / 3));
 	temp4.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 3));
-	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 2, window_height / 3), temp4, new CircularShoot(0.05f, -10.0f, 0.05f)));
-
+	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 2, window_height / 3), temp4, new CircularShoot(0.05f, -10.0f, 0.02f)));
+	std::vector<sf::Vector2f*>temp5;
+	temp5.push_back(new sf::Vector2f(window_width / 2, window_height / 2 + 15.0f));
+	temp5.push_back(new sf::Vector2f(window_width / 2, window_height / 2 - 15.0f));
+	temp5.push_back(new sf::Vector2f(window_width / 2 - 15.0f, window_height / 2));
+	temp5.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 2));
+	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 2, window_height / 2), temp5, new CircularShoot(0.05f, 10.0f, 0.02f)));
+	std::vector<sf::Vector2f*>temp6;
+	temp6.push_back(new sf::Vector2f(window_width / 2, window_height / 2 + 15.0f));
+	temp6.push_back(new sf::Vector2f(window_width / 2, window_height / 2 - 15.0f));
+	temp6.push_back(new sf::Vector2f(window_width / 2 - 15.0f, window_height / 2));
+	temp6.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 2));
+	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 2, window_height / 2), temp6, new CircularShoot(0.05f, -10.0f, 0.04f)));
+	std::vector<sf::Vector2f*>temp7;
+	temp7.push_back(new sf::Vector2f(window_width / 2, window_height / 4 + 15.0f));
+	temp7.push_back(new sf::Vector2f(window_width / 2, window_height / 4 - 15.0f));
+	temp7.push_back(new sf::Vector2f(window_width / 2 - 15.0f , window_height / 4 ));
+	temp7.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 4));
+	enemies.push_back(new Enemy(RADII::ENEMY,COLORS::ENEMY,sf::Vector2f(window_width/2,window_height/4),temp7,new CircularShoot(0.05f,-10.0f,0.04f)));
 }
 
 
