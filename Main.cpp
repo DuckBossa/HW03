@@ -81,9 +81,38 @@ void Entity::render(sf::RenderTarget& g) {
 	g.draw(form);
 }
 
-/*Player*/
+/*Move Behaviors*/
+void MoveStraightBehavior::move(sf::CircleShape& form, float dt) {
+	form.move(speed*dt*direction);
+}
+
+/*Shooting Behaviors*/
+void CircularShoot::shoot(float dt, Entity* e) {
+	timerR += dt;
+	timerS += dt;
+	if (timerR >= rotatePerSec) {
+		dynamic_cast<Enemy*>(e)->rotateShootingPos(angleToRotate);
+		timerR = 0;
+	}
+	if (timerS >= firingRate) {
+		Enemy* temp = dynamic_cast<Enemy*>(e);
+		for (auto x : temp->shooting_pos) {
+			sf::Vector2f dir = *x - temp->getPos();
+			float mag = sqrt(dir.x * dir.x + dir.y * dir.y);
+			em.enemyShoot(*x, Speeds::BULLET*dir/mag);
+		}
+		timerS = 0;
+	}
+}
+
+/* Bullets */
+void Bullet::update(float dt) {
+	move_behavior->move(form, dt);
+}
+
+/* Player */
 void Player::update(float dt) {
-	form.move(SPEEDS::PLAYER * direction);
+	form.move(Speeds::PLAYER*dt*direction);
 }
 
 void Player::handleInput() {
@@ -119,7 +148,60 @@ void Player::renderScore(sf::RenderTarget& g) {
 	score.draw(g);
 }
 
-/*Entity Manager*/
+/* Enemy */
+void Enemy::rotateShootingPos(float angle) {
+	float s = sin(angle*PI/180.0f);
+	float c = cos(angle*PI/180.0f);
+	for (auto pos : shooting_pos) {
+		pos->x -= getPos().x;
+		pos->y -= getPos().y;
+		float xnew = pos->x*c - pos->y*s;
+		float ynew = pos->x*s + pos->y*c;
+		pos->x = xnew + getPos().x;
+		pos->y = ynew + getPos().y;
+	}
+}
+
+void Enemy::update(float dt) {
+	shooting_behavior->shoot(dt, this);
+}
+
+/* Pool */
+Bullet* Pool::getBullet() {
+	if (!bQueue.empty()) {
+		Bullet* tmp = bQueue.front();
+		bQueue.pop();
+		return tmp;
+	} else {
+		return nullptr;
+	}
+}
+
+void Pool::returnBullet(Bullet* bull) {
+	bQueue.push(bull);
+}
+
+Enemy* Pool::getEnemy() {
+	if (!eQueue.empty()) {
+		Enemy* tmp = eQueue.front();
+		eQueue.pop();
+		return tmp;
+	} else {
+		return nullptr;
+	}
+}
+
+void Pool::returnEnemy(Enemy* enem) {
+	eQueue.push(enem);
+}
+
+void Pool::Init() {
+	for (int i = 0; i < 2000; ++i) {
+		bQueue.push(new Bullet());
+	}
+}
+
+/* Entity Manager */
 bool EntityManager::circleCollision(const Entity& c1, const Entity& c2) {
 	const auto c1p = c1.getPos();
 	const auto c2p = c2.getPos();
@@ -135,14 +217,14 @@ void EntityManager::handleInput() {
 }
 
 void EntityManager::update(float dt) {
-		player->update(dt);
-		for (auto bullet : ebullets) {
-			bullet->update(dt);
-		}
-		for (auto enemy : enemies) {
-			enemy->update(dt);
-		}
-		cout << "Num of bullets: " << ebullets.size() << "\n";
+	player->update(dt);
+	for (auto bullet : ebullets) {
+		bullet->update(dt);
+	}
+	for (auto enemy : enemies) {
+		enemy->update(dt);
+	}
+	std::cout << "Num of bullets: " << ebullets.size() << "\n";
 }
 
 void EntityManager::logic() {
@@ -168,7 +250,6 @@ void EntityManager::logic() {
 		}
 	}
 */
-
 }
 
 void EntityManager::render(sf::RenderTarget& g) {
@@ -183,9 +264,9 @@ void EntityManager::render(sf::RenderTarget& g) {
 	}
 }
 
-void EntityManager::enemyShoot(const sf::Vector2f &startpos, const sf::Vector2f vel) {
+void EntityManager::enemyShoot(const sf::Vector2f &startpos, const sf::Vector2f& vel) {
 	Bullet* temp = pool.getBullet();
-	temp->init(RADII::EBULLET, COLORS::EBULLET, startpos, vel);
+	temp->init(startpos, new MoveStraightBehavior(Speeds::BULLET, vel));
 	ebullets.push_back(temp);
 }
 
@@ -194,145 +275,61 @@ bool EntityManager::recycle(Bullet* bull) {
 }
 
 void EntityManager::resolveWallCollision() {
-	if (player->getPos().x + player->getRad() > window_width)
+	if (player->getPos().x + player->getRad() > window_width) {
 		player->setPos(window_width - player->getRad(), player->getPos().y);
-	else if (player->getPos().x - player->getRad() < 0)
+	} else if (player->getPos().x - player->getRad() < 0) {
 		player->setPos(player->getRad(), player->getPos().y);
-	if (player->getPos().y + player->getRad() > window_height)
+	}
+	if (player->getPos().y + player->getRad() > window_height) {
 		player->setPos(player->getPos().x, window_height - player->getRad());
-	else if (player->getPos().y - player->getRad() < 0)
+	} else if (player->getPos().y - player->getRad() < 0) {
 		player->setPos(player->getPos().x, player->getRad());
+	}
 }
 
 void EntityManager::initialize() {
-	addPlayer(new Player(sf::Vector2f(window_width/2,window_height*3.0/4.0)));
+	addPlayer(new Player(sf::Vector2f(window_width/2, window_height*3.0/4.0)));
 	pool.Init();
-	std::vector<sf::Vector2f*>temp;
-	temp.push_back(new sf::Vector2f(window_width / 2, window_height / 4 + 15.0f));
-	temp.push_back(new sf::Vector2f(window_width / 2, window_height / 4 - 15.0f));
-	temp.push_back(new sf::Vector2f(window_width / 2 - 15.0f , window_height / 4 ));
-	temp.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 4));
-	enemies.push_back(new Enemy(RADII::ENEMY,COLORS::ENEMY,sf::Vector2f(window_width/2,window_height/4),temp,new CircularShoot(0.05f,10.0f,0.02f)));
-	std::vector<sf::Vector2f*>temp2;
-	temp2.push_back(new sf::Vector2f(window_width/3, window_height / 3 + 15.0f));
-	temp2.push_back(new sf::Vector2f(window_width/3, window_height / 3 - 15.0f));
-	temp2.push_back(new sf::Vector2f(window_width/3 + 15.0f , window_height / 3));
-	temp2.push_back(new sf::Vector2f(window_width/3 - 15.0f, window_height / 3 ));
-	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 3, window_height / 3), temp2, new CircularShoot(0.05f, -10.0f, 0.02f)));
-	std::vector<sf::Vector2f*>temp3;
-	temp3.push_back(new sf::Vector2f(window_width*2/3, window_height / 3 + 15.0f));
-	temp3.push_back(new sf::Vector2f(window_width*2/3, window_height / 3 - 15.0f));
-	temp3.push_back(new sf::Vector2f(window_width*2/3 + 15.0f, window_height / 3));
-	temp3.push_back(new sf::Vector2f(window_width*2/3 - 15.0f, window_height / 3));
-	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width*2/ 3, window_height / 3), temp3, new CircularShoot(0.05f, 10.0f, 0.02f)));
-	std::vector<sf::Vector2f*>temp4;
-	temp4.push_back(new sf::Vector2f(window_width / 2, window_height / 3 + 15.0f));
-	temp4.push_back(new sf::Vector2f(window_width / 2, window_height /  3 - 15.0f));
-	temp4.push_back(new sf::Vector2f(window_width / 2 - 15.0f, window_height / 3));
-	temp4.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 3));
-	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 2, window_height / 3), temp4, new CircularShoot(0.05f, -10.0f, 0.02f)));
-	std::vector<sf::Vector2f*>temp5;
-	temp5.push_back(new sf::Vector2f(window_width / 2, window_height / 2 + 15.0f));
-	temp5.push_back(new sf::Vector2f(window_width / 2, window_height / 2 - 15.0f));
-	temp5.push_back(new sf::Vector2f(window_width / 2 - 15.0f, window_height / 2));
-	temp5.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 2));
-	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 2, window_height / 2), temp5, new CircularShoot(0.05f, 10.0f, 0.02f)));
-	std::vector<sf::Vector2f*>temp6;
-	temp6.push_back(new sf::Vector2f(window_width / 2, window_height / 2 + 15.0f));
-	temp6.push_back(new sf::Vector2f(window_width / 2, window_height / 2 - 15.0f));
-	temp6.push_back(new sf::Vector2f(window_width / 2 - 15.0f, window_height / 2));
-	temp6.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 2));
-	enemies.push_back(new Enemy(RADII::ENEMY, COLORS::ENEMY, sf::Vector2f(window_width / 2, window_height / 2), temp6, new CircularShoot(0.05f, -10.0f, 0.04f)));
-	std::vector<sf::Vector2f*>temp7;
-	temp7.push_back(new sf::Vector2f(window_width / 2, window_height / 4 + 15.0f));
-	temp7.push_back(new sf::Vector2f(window_width / 2, window_height / 4 - 15.0f));
-	temp7.push_back(new sf::Vector2f(window_width / 2 - 15.0f , window_height / 4 ));
-	temp7.push_back(new sf::Vector2f(window_width / 2 + 15.0f, window_height / 4));
-	enemies.push_back(new Enemy(RADII::ENEMY,COLORS::ENEMY,sf::Vector2f(window_width/2,window_height/4),temp7,new CircularShoot(0.05f,-10.0f,0.04f)));
-}
-
-
-/*Move Behaviors*/
-void MoveForwardBehavior::behave(Entity* e,float dt) {
-	e->moveEntity(sf::Vector2f(0, mag)*dt);
-}
-
-/*Shooting Behaviors*/
-void CircularShoot::shoot(float dt, Entity* e) {
-	timerR += dt;
-	timerS += dt;
-	if (timerR >= rotatePerSec) {
-		dynamic_cast<Enemy*>(e)->rotateShootingPos(angleToRotate);
-		timerR = 0;
-	}
-	if (timerS >= firingRate) {
-		Enemy* temp = dynamic_cast<Enemy*>(e);
-		for (auto x : temp->shootingPos) {
-			sf::Vector2f dir = *x - temp->getPos();
-			float mag = sqrt(dir.x * dir.x + dir.y * dir.y);
-			em.enemyShoot(*x, dir / mag*SPEEDS::BULLETS);
-		}
-		timerS = 0;
-	}
-}
-
-
-/*Bullets*/
-void Bullet::update(float dt) {
-	form.move(vel*dt);
-}
-
-/*Enemy*/
-void Enemy::rotateShootingPos(float angle){
-	float s = sin(angle*PI / 180.0f);
-	float c = cos(angle*PI / 180.0f);
-	for (auto pos : shootingPos) {
-		pos->x -= getPos().x;
-		pos->y -= getPos().y;
-		float xnew = pos->x * c - pos->y * s;
-		float ynew = pos->x * s + pos->y * c;
-		pos->x = xnew + getPos().x;
-		pos->y = ynew + getPos().y;
-	}
-}
-
-void Enemy::update(float dt) {
-	shoot->shoot(dt,this);
-}
-
-/*Pool*/
-Bullet* Pool::getBullet() {
-	
-	if (!bQueue.empty()) {
-		Bullet* tmp = bQueue.front();
-		bQueue.pop();
-		return tmp;
-	}
-	else
-		return nullptr;
-}
-
-void Pool::returnBullet(Bullet* bull) {
-	bQueue.push(bull);
-}
-
-Enemy* Pool::getEnemy() {
-	if (!eQueue.empty()) {
-		Enemy* tmp = eQueue.front();
-		eQueue.pop();
-		return tmp;
-	}
-	else
-		return nullptr;
-}
-
-void Pool::returnEnemy(Enemy* enem) {
-	eQueue.push(enem);
-}
-
-
-void Pool::Init() {
-	for (int i = 0; i < 2000; i++) {
-		bQueue.push(new Bullet());
-	}
+	std::vector<sf::Vector2f*> temp;
+	temp.push_back(new sf::Vector2f(window_width/2, window_height/4 + 15.0f));
+	temp.push_back(new sf::Vector2f(window_width/2, window_height/4 - 15.0f));
+	temp.push_back(new sf::Vector2f(window_width/2 - 15.0f, window_height/4 ));
+	temp.push_back(new sf::Vector2f(window_width/2 + 15.0f, window_height/4));
+	enemies.push_back(new Enemy(sf::Vector2f(window_width/2, window_height/4), temp, new CircularShoot(0.05f, 10.0f, 0.02f)));
+	std::vector<sf::Vector2f*> temp2;
+	temp2.push_back(new sf::Vector2f(window_width/3, window_height/3 + 15.0f));
+	temp2.push_back(new sf::Vector2f(window_width/3, window_height/3 - 15.0f));
+	temp2.push_back(new sf::Vector2f(window_width/3 + 15.0f, window_height/3));
+	temp2.push_back(new sf::Vector2f(window_width/3 - 15.0f, window_height/3));
+	enemies.push_back(new Enemy(sf::Vector2f(window_width/3, window_height/3), temp2, new CircularShoot(0.05f, -10.0f, 0.02f)));
+	std::vector<sf::Vector2f*> temp3;
+	temp3.push_back(new sf::Vector2f(window_width*2/3, window_height/3 + 15.0f));
+	temp3.push_back(new sf::Vector2f(window_width*2/3, window_height/3 - 15.0f));
+	temp3.push_back(new sf::Vector2f(window_width*2/3 + 15.0f, window_height/3));
+	temp3.push_back(new sf::Vector2f(window_width*2/3 - 15.0f, window_height/3));
+	enemies.push_back(new Enemy(sf::Vector2f(window_width*2/3, window_height/3), temp3, new CircularShoot(0.05f, 10.0f, 0.02f)));
+	std::vector<sf::Vector2f*> temp4;
+	temp4.push_back(new sf::Vector2f(window_width/2, window_height/3 + 15.0f));
+	temp4.push_back(new sf::Vector2f(window_width/2, window_height/3 - 15.0f));
+	temp4.push_back(new sf::Vector2f(window_width/2 - 15.0f, window_height/3));
+	temp4.push_back(new sf::Vector2f(window_width/2 + 15.0f, window_height/3));
+	enemies.push_back(new Enemy(sf::Vector2f(window_width/2, window_height/3), temp4, new CircularShoot(0.05f, -10.0f, 0.02f)));
+	std::vector<sf::Vector2f*> temp5;
+	temp5.push_back(new sf::Vector2f(window_width/2, window_height/2 + 15.0f));
+	temp5.push_back(new sf::Vector2f(window_width/2, window_height/2 - 15.0f));
+	temp5.push_back(new sf::Vector2f(window_width/2 - 15.0f, window_height/2));
+	temp5.push_back(new sf::Vector2f(window_width/2 + 15.0f, window_height/2));
+	enemies.push_back(new Enemy(sf::Vector2f(window_width/2, window_height/2), temp5, new CircularShoot(0.05f, 10.0f, 0.02f)));
+	std::vector<sf::Vector2f*> temp6;
+	temp6.push_back(new sf::Vector2f(window_width/2, window_height/2 + 15.0f));
+	temp6.push_back(new sf::Vector2f(window_width/2, window_height/2 - 15.0f));
+	temp6.push_back(new sf::Vector2f(window_width/2 - 15.0f, window_height/2));
+	temp6.push_back(new sf::Vector2f(window_width/2 + 15.0f, window_height/2));
+	enemies.push_back(new Enemy(sf::Vector2f(window_width/2, window_height/2), temp6, new CircularShoot(0.05f, -10.0f, 0.04f)));
+	std::vector<sf::Vector2f*> temp7;
+	temp7.push_back(new sf::Vector2f(window_width/2, window_height/4 + 15.0f));
+	temp7.push_back(new sf::Vector2f(window_width/2, window_height/4 - 15.0f));
+	temp7.push_back(new sf::Vector2f(window_width/2 - 15.0f, window_height/4));
+	temp7.push_back(new sf::Vector2f(window_width/2 + 15.0f, window_height/4));
+	enemies.push_back(new Enemy(sf::Vector2f(window_width/2, window_height/4), temp7, new CircularShoot(0.05f, -10.0f, 0.04f)));
 }
