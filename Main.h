@@ -27,9 +27,9 @@ namespace Colors {
 	const auto EBULLET = sf::Color::Magenta;
 }
 
-namespace Speeds { /* pixels per frame */
+namespace Speeds { /* pixels per second */
 	const auto PLAYER = 200.0f;
-	const auto BULLET = 15.0f;
+	const auto BULLET = 100.0f;
 	const auto ENEMY = 3.0f;
 }
 
@@ -41,7 +41,12 @@ namespace Radii {
 }
 
 namespace FiringRates {
-	const auto PLAYER = 0.5f;
+	const auto PLAYER = 5.0f;
+	const auto ENEMY = 1.0f;
+}
+
+namespace RotationalSpeeds {
+	const auto ENEMY = 50.0f;
 }
 
 class Score {
@@ -67,22 +72,61 @@ public:
 	void draw(sf::RenderTarget& g);
 };
 
-class MoveBehavior {
+/* behaviors */
+class Behavior {
+public:
+	virtual void behave(sf::CircleShape& form, float dt) = 0;
+};
+
+/* move behaviors */
+class MoveBehavior : public Behavior {
 protected:
 	float speed;
 	sf::Vector2f direction;
 	
 public:
 	MoveBehavior(float speed, const sf::Vector2f& direction) : speed(speed), direction(direction) {}
-	virtual void move(sf::CircleShape& form, float dt) = 0;
 };
 
-class MoveStraightBehavior : public MoveBehavior {
+class MoveStraight : public MoveBehavior {
 public:
-	MoveStraightBehavior(float speed, const sf::Vector2f& direction) : MoveBehavior(speed, direction) {}
-	void move(sf::CircleShape& form, float dt) override;
+	MoveStraight(float speed, const sf::Vector2f& direction) : MoveBehavior(speed, direction) {}
+	void behave(sf::CircleShape& form, float dt) override;
 };
 
+/* shoot behaviors */
+class ShootBehavior : public Behavior {
+protected:
+	float firing_rate; /* in bullets per second */
+	float timer; /* in seconds */
+	const sf::Color& bullet_color;
+	
+public:
+	ShootBehavior(float firing_rate, const sf::Color& bullet_color) : firing_rate(firing_rate), bullet_color(bullet_color), timer(0) {}
+};
+
+class ShootStraight : public ShootBehavior {
+public:
+	ShootStraight(float firing_rate, const sf::Color& bullet_color) : ShootBehavior(firing_rate, bullet_color) {}
+	void behave(sf::CircleShape& form, float dt) override;
+};
+
+/* rotate behavior */
+class RotateBehavior : public Behavior {
+protected:
+	float rotational_speed; /* in degrees per second */
+	
+public:
+	RotateBehavior(float rotational_speed) : rotational_speed(rotational_speed) {}
+};
+
+class RotateConstantly : public RotateBehavior {
+public:
+	RotateConstantly(float rotational_speed) : RotateBehavior(rotational_speed) {}
+	void behave(sf::CircleShape& form, float dt) override;
+};
+
+/* entities */
 class Entity {
 protected:
 	sf::CircleShape form;
@@ -101,31 +145,10 @@ public:
 	void render(sf::RenderTarget& g);
 };
 
-class ShootingBehavior {
-public:
-	ShootingBehavior() {}
-	~ShootingBehavior() {}
-	virtual void shoot(float dt, Entity* e) = 0;
-};
-
-class CircularShoot : public ShootingBehavior {
-private:
-	float rotatePerSec;
-	float angleToRotate;
-	float firingRate;
-	float timerR;
-	float timerS;
-	
-public:
-	CircularShoot(float rotatePerSec, float angleToRotate,float firingRate) : rotatePerSec(rotatePerSec), angleToRotate(angleToRotate), firingRate(firingRate) {
-		timerR = timerS = 0;
-	}
-	void shoot(float dt,Entity* e) override;
-};
-
 class Bullet : public Entity {
 private:
 	MoveBehavior* move_behavior;
+	
 public:
 	Bullet() : Entity(sf::Vector2f(0, 0), Radii::EBULLET, Colors::EBULLET) {}
 	~Bullet() {
@@ -141,7 +164,7 @@ public:
 
 class Player : public Entity {
 private:
-	int spf; //shots per frame
+	/* int spf; // shots per frame */
 	sf::Vector2f direction;
 	Score score;
 	
@@ -159,23 +182,18 @@ public:
 class Enemy : public Entity {
 private:
 	/* MoveBehavior* move; */
-	ShootingBehavior* shooting_behavior;
+	ShootBehavior* shoot_behavior;
+	RotateBehavior* rotate_behavior;
 	
 public:
-	std::vector<sf::Vector2f*> shooting_pos;
-	Enemy(const sf::Vector2f& start_pos, const std::vector<sf::Vector2f*>& shooting_pos, ShootingBehavior* shooting_behavior) : Entity(start_pos, Radii::ENEMY, Colors::ENEMY), shooting_pos(shooting_pos), shooting_behavior(shooting_behavior) {
+	Enemy(const sf::Vector2f& start_pos, ShootBehavior* shoot_behavior, RotateBehavior* rotate_behavior) : Entity(start_pos, Radii::ENEMY, Colors::ENEMY), shoot_behavior(shoot_behavior), rotate_behavior(rotate_behavior) {
 		form.setOrigin(Radii::ENEMY, Radii::ENEMY);
+		form.setRotation(90.0);
 	}
-	void init(const sf::Vector2f& start_pos, const std::vector<sf::Vector2f*>& _shooting_pos, ShootingBehavior* _shooting_behavior) {
-		form.setPosition(start_pos);
-		form.setOrigin(Radii::ENEMY, Radii::ENEMY);
-		shooting_pos = _shooting_pos;
-		shooting_behavior = _shooting_behavior;
-	}
-	void rotateShootingPos(float angle);
 	void update(float dt) override;
 };
 
+/* object pool */
 class Pool {
 private:
 	std::queue<Bullet*> bQueue;
@@ -192,6 +210,7 @@ public:
 	void Init();
 };
 
+/* entity manager */
 class EntityManager {
 private:
 	Player* player;
